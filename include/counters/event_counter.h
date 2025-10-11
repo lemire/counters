@@ -35,8 +35,8 @@ struct event_count {
   enum event_counter_types {
     CPU_CYCLES,
     INSTRUCTIONS,
-    BRANCH_MISSES=2,
-    BRANCH=4
+    BRANCH,
+    BRANCH_MISSES
   };
 
   double elapsed_sec() const { return std::chrono::duration<double>(elapsed).count(); }
@@ -107,7 +107,9 @@ struct event_collector {
       : linux_events(std::vector<int>{
             PERF_COUNT_HW_CPU_CYCLES,
             PERF_COUNT_HW_INSTRUCTIONS,
-        }) {}
+            PERF_COUNT_HW_BRANCH_INSTRUCTIONS, // Retired branch instructions
+            PERF_COUNT_HW_BRANCH_MISSES,
+          }) {}
   bool has_events() { return linux_events.is_working(); }
 #elif __APPLE__ && __aarch64__
   AppleEvents apple_events;
@@ -140,9 +142,8 @@ struct event_collector {
     }
     count.event_counts[0] = diff.cycles;
     count.event_counts[1] = diff.instructions;
-    count.event_counts[2] = diff.missed_branches;
-    count.event_counts[3] = 0;
-    count.event_counts[4] = diff.branches;
+    count.event_counts[2] = diff.branches;
+    count.event_counts[3] = diff.missed_branches;
 #endif
     count.elapsed = end_clock - start_clock;
     return count;

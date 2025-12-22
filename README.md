@@ -28,7 +28,6 @@ auto agg = counters::bench([] {
 bench_parameter params;
 params.min_repeat = 20;
 params.min_time_ns = 200'000'000; // 0.2 s
-params.inner_max_repeat = 10000;  // allow larger inner loop for tiny functions
 auto agg2 = counters::bench([] {
   // code to benchmark
 }, params);

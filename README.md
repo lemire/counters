@@ -12,57 +12,72 @@ This project provides a C++ library to access hardware performance counters (CPU
 The library is low-level and does not actually provide the benchmarking code itself.
 I encourage you to build up your own benchmarking code.
 
-As an example, the following code example will benchmark a function. 
-The C++ templated function bench measures the performance of a provided callable function by executing it multiple times, using a collector to track metrics like execution time, and returns an event_aggregate object with the results; it accepts parameters for minimum repetitions (min_repeat, default 10), minimum warm-up time in nanoseconds (min_time_ns, default 400ms), and maximum repetitions (max_repeat, default 1,000,000), ensuring at least one iteration; the function first runs a warm-up phase, executing function at least min_repeat times and increasing iterations (up to max_repeat) by a factor of 10 if the total warm-up time is less than min_time_ns, to stabilize the processor state, then performs the actual measurement phase with the same number of iterations, collecting metrics into a new event_aggregate for consistent and reliable benchmarking.
-
+As an example, the repository provides a small helper `bench()` to measure a
+callable. The helper accepts callables as forwarding references and provides a
+second form that accepts a `bench_parameter` struct to tune behaviour.
 
 ```cpp
- #include "counters/event_counter.h"
+#include "counters/bench.h"
 
- event_collector collector;
+// simple usage: forwards the callable
+auto agg = bench([] {
+  // code to benchmark
+});
 
- template <class function_type>
- event_aggregate bench(const function_type &&function, size_t min_repeat = 10,
-                       size_t min_time_ns = 400'000'000,
-                       size_t max_repeat = 1000000) {
-   size_t N = min_repeat;
-   if (N == 0) { N = 1; }
-   // We warm up first. We warmup for at least 0.4s (by default). This makes
-   // sure that the processor is in a consistent state.
-   event_aggregate warm_aggregate{};
-   for (size_t i = 0; i < N; i++) {
-     collector.start();
-     function();
-     event_count allocate_count = collector.end();
-     warm_aggregate << allocate_count;
-     if ((i + 1 == N) && (warm_aggregate.total_elapsed_ns() < min_time_ns) &&
-         (N < max_repeat)) {
-       N *= 10;
-     }
-   }
-   // Actual measure, another 0.4s (by default), this time with a processor
-   // warmed up.
-   event_aggregate aggregate{};
-   for (size_t i = 0; i < N; i++) {
-     collector.start();
-     function();
-     event_count allocate_count = collector.end();
-     aggregate << allocate_count;
-   }
-   return aggregate;
- }
+// or use parameters to tune the measurement
+bench_parameter params;
+params.min_repeat = 20;
+params.min_time_ns = 200'000'000; // 0.2 s
+params.inner_max_repeat = 10000;  // allow larger inner loop for tiny functions
+auto agg2 = bench([] {
+  // code to benchmark
+}, params);
 ```
+
+- **Tailoring `bench`**
+
+You can tune the measurement behaviour via the `bench_parameter` struct.
+
+- `min_repeat`: minimum number of outer iterations (warm-up + measurement).
+  Increase when you need more samples or when per-iteration variance is high.
+- `min_time_ns`: target minimum warm-up time (nanoseconds). If the warm-up
+  time after `min_repeat` is shorter, the outer loop will grow up to
+  `max_repeat`. Increase for longer stabilization on complex workloads.
+- `max_repeat`: safety cap on the outer loop. Raised if you expect long runs
+  or want more samples; keep reasonable to avoid runaway loops.
+- `inner_max_repeat`: maximum repetition factor `M` for very short functions.
+  When a single call is too fast to measure, `bench` repeats the callable up
+  to `M` times per outer iteration and then divides counters by `M` to yield
+  per-call metrics. Increase this for tiny functions (e.g., micro/nanosecond
+  workloads).
+- `min_time_per_inner_ns`: target minimum time for the inner repeated block.
+  `bench` increases `M` until the inner block takes at least this long (or
+  until `inner_max_repeat`). Raise to get a longer inner block for stability.
+
+Examples:
+
+- Short, cheap function (many operations per microsecond):
+
+```cpp
+bench_parameter p;
+p.inner_max_repeat = 10000;
+p.min_time_per_inner_ns = 10'000; // 10 microseconds
+auto a = bench(my_short_function, p);
+```
+
+- Expensive function (costly I/O or heavy work): lower inner repetition and
+  bump `min_repeat` or keep `min_time_ns` large to collect stable averages.
+
+Notes:
+- `bench` accepts the callable as a forwarding reference and uses
+  `std::forward` internally.
+- For very short functions `bench` runs an inner loop that repeats the
+  callable `M` times (up to `inner_max_repeat`) so the measured block is
+  stable; all returned counters are divided by `M` to produce per-call
+  metrics (the caller observes results "as if" the callable ran once).
 
 Care should be taken that the call to `function()` is not optimized away. You can avoid
-such problems by saving results to a volatile variable. You may also want to add synchronization and other features. For very inexpensive functions, this routine will fail: so you should benchmark sensible functions (at least tens of nanoseconds). 
-
-You call it as...
-
-```cpp
-auto agg = bench(myfunction);
-```
-
-where `myfunction` could be a lambda.
+such problems by saving results to a volatile variable. You may also want to add synchronization and other features. For very inexpensive functions, this routine will fail: so you should benchmark sensible functions (at least tens of nanoseconds).
 
 
 The `event_aggregate` struct provides aggregate statistics over multiple `event_count` measurements. Its main methods are
@@ -96,13 +111,14 @@ counters.
 ## CMake
 
 
-You can add the library as a dependency as follows.
+You can add the library as a dependency as follows. Replace `x.y.z` by 
+the version you want to use.
 
 ```cmake
 FetchContent_Declare(
   counters
   GIT_REPOSITORY https://github.com/lemire/counters.git
-  GIT_TAG v1.0.2
+  GIT_TAG vx.y.z
 )
 
 FetchContent_MakeAvailable(counters)
@@ -115,7 +131,7 @@ If you use CPM, it is somewhat simplier:
 ```CMake
 include(cmake/CPM.cmake)
 
-CPMAddPackage("gh:lemire/counters#v1.0.2")
+CPMAddPackage("gh:lemire/counters#vx.y.z")
 target_link_libraries(yourtarget PRIVATE counters::counters)
 ```
 
@@ -136,10 +152,14 @@ If you use this project in a publication or report, please consider citing it. R
 
 
 ## Project Structure
+## Project Structure
 - `include/counters/event_counter.h`: Main interface for event measurement
 - `include/counters/linux-perf-events.h`: Linux implementation (perf events)
 - `include/counters/apple_arm_events.h`: Apple Silicon/macOS implementation
+- `include/counters/bench.h`: `bench()` helper and `bench_parameter` tuning API
+- `include/counters/*`: public headers used by consumers
 - `CMakeLists.txt`: CMake configuration file
+- `README.md`: this documentation and usage examples
 
 Feel free to open an issue or pull request for any improvement or correction.
 

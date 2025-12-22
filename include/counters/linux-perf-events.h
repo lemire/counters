@@ -7,8 +7,8 @@
 #include <unistd.h>           // for syscall
 
 #include <cerrno>  // for errno
-#include <cstring> // for memset
 #include <cstdint> // for uint32_t, uint64_t
+#include <cstring> // for memset
 #include <string>
 #include <vector>
 

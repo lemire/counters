@@ -122,7 +122,7 @@ If you use this project in a publication or report, please consider citing it. R
 ```bibtex
 @misc{counters2025,
   author = {Daniel Lemire},
-  title = {counters: Lightweight performance counters for Linux and macOS (Apple Silicon)},
+  title = {{The counters library: Lightweight performance counters for Linux and macOS (Apple Silicon)}},
   year = {2025},
   howpublished = {GitHub repository},
   note = {https://github.com/lemire/counters}

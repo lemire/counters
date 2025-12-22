@@ -2,7 +2,7 @@
 #define COUNTERS_BENCH_H_
 #include "counters/event_counter.h"
 #include <utility>
-
+#include <stdexcept>
 namespace counters {
 
 /// Parameters to control benchmarking behavior.

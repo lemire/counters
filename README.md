@@ -46,33 +46,18 @@ You can tune the measurement behaviour via the `bench_parameter` struct.
 - `max_repeat`: safety cap on the outer loop. Raised if you expect long runs
   or want more samples; keep reasonable to avoid runaway loops.
 
-Very short functions (requiring fewer than 1 mus) are still benchmarked, but they are repeatedly called (up to 10000 times). Timings are then divided by the number of repetitions.
-
-Examples:
-
-- Short, cheap function (many operations per microsecond):
-
-```cpp
-bench_parameter p;
-p.inner_max_repeat = 10000;
-p.min_time_per_inner_ns = 10'000; // 10 microseconds
-auto a = bench(my_short_function, p);
-```
-
-- Expensive function (costly I/O or heavy work): lower inner repetition and
-  bump `min_repeat` or keep `min_time_ns` large to collect stable averages.
-
 Notes:
 - `bench` accepts the callable as a forwarding reference and uses
   `std::forward` internally.
 - For very short functions `bench` runs an inner loop that repeats the
   callable `M` times (up to `inner_max_repeat`) so the measured block is
   stable; all returned counters are divided by `M` to produce per-call
-  metrics (the caller observes results "as if" the callable ran once).
+  metrics (the caller observes results "as if" the callable ran once). Timings are then divided by the number of repetitions. This might be problematic in some cases, so use some care in interpreting the results from short functions.
 
-Care should be taken that the call to `function()` is not optimized away. You can avoid
-such problems by saving results to a volatile variable. You may also want to add synchronization and other features. For very inexpensive functions, this routine will fail: so you should benchmark sensible functions (at least tens of nanoseconds).
 
+*WARNINGS*:
+- It might matter a great deal whether function is inlineable. Inlining can drastically change the working being benchmarked. 
+- Care should be taken that the call to `function()` is not optimized away. You can avoid such problems by saving results to a volatile variable. You may also want to add synchronization and other features.
 
 The `event_aggregate` struct provides aggregate statistics over multiple `event_count` measurements. Its main methods are
 

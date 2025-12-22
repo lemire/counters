@@ -102,7 +102,7 @@ You can add the library as a dependency as follows.
 FetchContent_Declare(
   counters
   GIT_REPOSITORY https://github.com/lemire/counters.git
-  GIT_TAG v1.0.2
+  GIT_TAG v1.0.4
 )
 
 FetchContent_MakeAvailable(counters)
@@ -115,7 +115,7 @@ If you use CPM, it is somewhat simplier:
 ```CMake
 include(cmake/CPM.cmake)
 
-CPMAddPackage("gh:lemire/counters#v1.0.2")
+CPMAddPackage("gh:lemire/counters#v1.0.4")
 target_link_libraries(yourtarget PRIVATE counters::counters)
 ```
 

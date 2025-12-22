@@ -12,7 +12,7 @@ add_library(counters INTERFACE)
 
 
 
-add_library(Counters::counters ALIAS counters)
+add_library(counters::counters ALIAS counters)
 target_include_directories(
   counters
   INTERFACE

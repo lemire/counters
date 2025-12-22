@@ -17,7 +17,7 @@
 #include <libgen.h>
 #endif
 
-#if __APPLE__ && __aarch64__
+#if defined(__APPLE__) && defined(__aarch64__)
 #include "apple_arm_events.h"
 #endif
 
@@ -109,7 +109,7 @@ struct event_collector {
             PERF_COUNT_HW_INSTRUCTIONS,
         }) {}
   bool has_events() { return linux_events.is_working(); }
-#elif __APPLE__ && __aarch64__
+#elif defined(__APPLE__) && defined(__aarch64__)
   AppleEvents apple_events;
   performance_counters diff;
   event_collector() : diff(0) { apple_events.setup_performance_counters(); }
@@ -122,7 +122,7 @@ struct event_collector {
   inline void start() {
 #if defined(__linux)
     linux_events.start();
-#elif __APPLE__ && __aarch64__
+#elif defined(__APPLE__) && defined(__aarch64__)
     if (has_events()) {
       diff = apple_events.get_counters();
     }

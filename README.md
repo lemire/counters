@@ -92,6 +92,49 @@ The performance counters are only available when `collector.has_events()` return
 You may need to run your software with privileged access (sudo) to get the performance
 counters.
 
+
+## CMake
+
+
+You can add the library as a dependency as follows.
+
+```cmake
+FetchContent_Declare(
+  counters
+  GIT_REPOSITORY https://github.com/lemire/counters.git
+  GIT_TAG v1.0.2
+)
+
+FetchContent_MakeAvailable(counters)
+
+target_link_libraries(yourtarget PRIVATE counters::counters)
+```
+
+If you use CPM, it is somewhat simplier:
+
+```CMake
+include(cmake/CPM.cmake)
+
+CPMAddPackage("gh:lemire/counters#v1.0.2")
+target_link_libraries(yourtarget PRIVATE counters::counters)
+```
+
+
+## Citing This Work
+
+If you use this project in a publication or report, please consider citing it. Replace fields (year, author, url, commit) as appropriate.
+
+```bibtex
+@misc{counters2025,
+  author = {Daniel Lemire},
+  title = {counters: Lightweight performance counters for Linux and macOS (Apple Silicon)},
+  year = {2025},
+  howpublished = {GitHub repository},
+  note = {https://github.com/lemire/counters}
+}
+```
+
+
 ## Project Structure
 - `include/counters/event_counter.h`: Main interface for event measurement
 - `include/counters/linux-perf-events.h`: Linux implementation (perf events)
@@ -99,3 +142,4 @@ counters.
 - `CMakeLists.txt`: CMake configuration file
 
 Feel free to open an issue or pull request for any improvement or correction.
+

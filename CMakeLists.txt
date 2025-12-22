@@ -4,8 +4,20 @@ project(counters VERSION 1.0.3 LANGUAGES CXX)
 
 option(COUNTERS_INSTALL "Enable install" ON)
 
+# Default to Release for single-configuration generators when no build type
+# was provided by the user.
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
+endif()
+option(COUNTERS_BUILD_TESTS "Build tests" OFF)
+
 if(COUNTERS_INSTALL)
   include(GNUInstallDirs)
+endif()
+
+if(COUNTERS_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(test)
 endif()
 
 add_library(counters INTERFACE)

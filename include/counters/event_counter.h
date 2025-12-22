@@ -1,5 +1,5 @@
-#ifndef __EVENT_COUNTER_H
-#define __EVENT_COUNTER_H
+#ifndef COUNTERS__EVENT_COUNTER_H
+#define COUNTERS__EVENT_COUNTER_H
 
 #include <cctype>
 #ifndef _MSC_VER
@@ -21,6 +21,7 @@
 #include "apple_arm_events.h"
 #endif
 
+namespace counters {
 struct event_count {
   std::chrono::duration<double> elapsed;
   std::vector<unsigned long long> event_counts;
@@ -76,6 +77,14 @@ struct event_aggregate {
   event_count total{};
   event_count best{};
   event_count worst{};
+  template <typename T>
+  event_aggregate& operator/=(T divisor) {
+    total.elapsed /= double(divisor);
+    for (size_t i = 0; i < total.event_counts.size(); i++) {
+      total.event_counts[i] /= double(divisor);
+    }
+    return *this;
+  }
 
   event_aggregate() = default;
 
@@ -100,6 +109,7 @@ struct event_aggregate {
   double fastest_elapsed_ns() const { return best.elapsed_ns(); }
   double fastest_cycles() const { return best.cycles(); }
   double fastest_instructions() const { return best.instructions(); }
+  int iteration_count() const { return iterations; }
 };
 
 struct event_collector {
@@ -154,5 +164,5 @@ struct event_collector {
     return count;
   }
 };
-
+}
 #endif

@@ -1,5 +1,9 @@
+#ifndef COUNTERS_BENCH_H_
+#define COUNTERS_BENCH_H_
 #include "counters/event_counter.h"
 #include <utility>
+
+namespace counters {
 
 /// Parameters to control benchmarking behavior.
 ///
@@ -32,67 +36,57 @@ struct bench_parameter {
   /// Maximum number of outer iterations.
   /// Guards against runaway increases when trying to reach `min_time_ns`.
   size_t max_repeat = 1000000;
-
-  /// Maximum multiplier for inner repetition when measuring very fast callables.
-  ///
-  /// The inner repetition factor `M` is an implementation detail: the bench
-  /// will increase `M` (by powers of ten) until the inner block takes at least
-  /// `min_time_per_inner_ns` nanoseconds, or until `inner_max_repeat` is
-  /// reached. All counters are divided by `M` before returning, so the caller
-  /// observes per-call metrics.
-  size_t inner_max_repeat = 1000;
-
-  /// Minimum time in nanoseconds for the inner repeated block.
-  /// The benchmark increases the inner repetition factor until the elapsed
-  /// time for the inner loop is at least this many nanoseconds (or until
-  /// `inner_max_repeat` is reached).
-  size_t min_time_per_inner_ns = 1000;
 };
 
-template <class Function>
-event_aggregate bench(Function &&function, const bench_parameter &params) {
-  return bench(std::forward<Function>(function), params.min_repeat,
-               params.min_time_ns, params.max_repeat,
-               params.inner_max_repeat, params.min_time_per_inner_ns);
+template <std::size_t... Is, typename Func>
+void call_ntimes_impl(Func &&func, std::index_sequence<Is...>) {
+  // Expand the call N times using an initializer list to force evaluation order.
+  (void)std::initializer_list<int>{((void)Is, (func(), 0))...};
 }
 
-template <class Function>
-event_aggregate bench(Function &&function, size_t min_repeat = 10,
-                      size_t min_time_ns = 400'000'000,
-                      size_t max_repeat = 1000000,
-                      size_t inner_max_repeat = 1000,
-                      size_t min_time_per_inner_ns = 1000) {
+template <std::size_t N, typename Func>
+void call_ntimes(Func &&func) {
+  call_ntimes_impl(std::forward<Func>(func), std::make_index_sequence<N>{});
+}
+
+// Runtime dispatcher that maps some common repetition counts to
+// compile-time unrolled instantiations. Allowed compile-time sizes:
+// 1, 10, 100, 1000, 10000. Other values fall back to a simple loop.
+template <typename Func>
+inline void call_ntimes_runtime(Func &&func, size_t M) {
+  switch (M) {
+  case 1:
+    call_ntimes<1>(std::forward<Func>(func));
+    break;
+  case 10:
+    call_ntimes<10>(std::forward<Func>(func));
+    break;
+  case 100:
+    call_ntimes<100>(std::forward<Func>(func));
+    break;
+  case 1000:
+    call_ntimes<1000>(std::forward<Func>(func));
+    break;
+  default:
+    for (size_t _i = 0; _i < M; ++_i)
+      std::forward<Func>(func)();
+  }
+}
+
+// Compile-time specialized bench implementation for a fixed inner repeat M.
+template <size_t M, class Function>
+event_aggregate bench_impl(Function &&function, size_t min_repeat,
+                           size_t min_time_ns, size_t max_repeat) {
   static thread_local event_collector collector;
   auto fn = std::forward<Function>(function);
   size_t N = min_repeat;
-  // if function() is too fast, repeat it M times to get a measurable time.
-  size_t M = 1;
-  while (M < inner_max_repeat) {
-    collector.start();
-    for (size_t i = 0; i < M; i++) {
-      fn();
-    }
-    event_count allocate_count = collector.end();
-    if (allocate_count.elapsed_ns() >= min_time_per_inner_ns) {
-      break;
-    }
-    M *= 10;
-    if (M >= inner_max_repeat) {
-      M = inner_max_repeat;
-      break;
-    }
-  }
-  if (N == 0) {
-    N = 1;
-  }
-  // We warm up first. We warmup for at least 0.4s (by default). This makes
-  // sure that the processor is in a consistent state.
+  if (N == 0) N = 1;
+
+  // Warm-up
   event_aggregate warm_aggregate{};
   for (size_t i = 0; i < N; i++) {
     collector.start();
-    for (size_t j = 0; j < M; j++) {
-      fn();
-    }
+    call_ntimes<M>(fn);
     event_count allocate_count = collector.end();
     warm_aggregate << allocate_count;
     if ((i + 1 == N) && (warm_aggregate.total_elapsed_ns() < min_time_ns) &&
@@ -100,17 +94,73 @@ event_aggregate bench(Function &&function, size_t min_repeat = 10,
       N *= 10;
     }
   }
-  // Actual measure, another 0.4s (by default), this time with a processor
-  // warmed up.
+
+  // Measurement
   event_aggregate aggregate{};
   for (size_t i = 0; i < N; i++) {
     collector.start();
-    for (size_t j = 0; j < M; j++) {
-      fn();
-    }
+    call_ntimes<M>(fn);
     event_count allocate_count = collector.end();
     aggregate << allocate_count;
   }
-  aggregate /= M; // average per single function() call
+
+  aggregate /= M;
   return aggregate;
 }
+
+template <class Function>
+event_aggregate bench(Function &&function, size_t min_repeat = 10,
+                      size_t min_time_ns = 400'000'000,
+                      size_t max_repeat = 1000000,
+                      size_t min_time_per_inner_ns = 1000) {
+  static thread_local event_collector collector;
+  auto fn = std::forward<Function>(function);
+  size_t N = min_repeat;
+  // if function() is too fast, repeat it M times to get a measurable time.
+  size_t M = 1;
+  while (M < 1000) {
+    collector.start();
+    call_ntimes_runtime(fn, M);
+    event_count allocate_count = collector.end();
+    if (allocate_count.elapsed_ns() >= min_time_per_inner_ns) {
+      break;
+    }
+    M *= 10;
+    if (M >= 1000) {
+      M = 1000;
+      break;
+    }
+  }
+
+  // Dispatch to compile-time specialized implementation for common M values.
+  switch (M) {
+  case 1:
+    return bench_impl<1>(std::forward<Function>(function), min_repeat,
+                         min_time_ns, max_repeat);
+  case 10:
+    return bench_impl<10>(std::forward<Function>(function), min_repeat,
+                          min_time_ns, max_repeat);
+  case 100:
+    return bench_impl<100>(std::forward<Function>(function), min_repeat,
+                           min_time_ns, max_repeat);
+  case 1000:
+    return bench_impl<1000>(std::forward<Function>(function), min_repeat,
+                            min_time_ns, max_repeat);
+  default:
+    // Fallback to generic runtime implementation
+    throw std::runtime_error("unreachable");
+    break;
+  }
+
+}
+
+
+
+template <class Function>
+event_aggregate bench(Function &&function, const bench_parameter &params) {
+  return bench(std::forward<Function>(function), params.min_repeat,
+               params.min_time_ns, params.max_repeat);
+}
+
+} // namespace counters
+#endif // COUNTERS_BENCH_H_

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COUNTERS_LINUX_PERF_EVENTS_H_
+#define COUNTERS_LINUX_PERF_EVENTS_H_
 #ifdef __linux__
 
 #include <asm/unistd.h>       // for __NR_perf_event_open
@@ -11,7 +12,7 @@
 #include <cstring> // for memset
 #include <string>
 #include <vector>
-
+namespace counters {
 template <int TYPE = PERF_TYPE_HARDWARE> class LinuxEvents {
   int fd;
   bool working;
@@ -100,4 +101,6 @@ public:
 private:
   void report_error(const std::string &) { working = false; }
 };
-#endif
+}
+#endif // __linux__
+#endif // COUNTERS_LINUX_PERF_EVENTS_H_

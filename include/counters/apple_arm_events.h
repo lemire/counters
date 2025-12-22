@@ -34,8 +34,8 @@
 // Released into the public domain (unlicense.org).
 // =============================================================================
 
-#ifndef M1CYCLES_H
-#define M1CYCLES_H
+#ifndef COUNTERS_M1CYCLES_H
+#define COUNTERS_M1CYCLES_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -48,7 +48,7 @@
 #include <sys/kdebug.h>      // for kdebug trace decode
 #include <sys/sysctl.h>      // for sysctl()
 #include <unistd.h>          // for usleep()
-
+namespace counters {
 struct performance_counters {
   double cycles;
   double branches;
@@ -1002,5 +1002,5 @@ struct AppleEvents {
         counters_0[counter_map[3]], counters_0[counter_map[1]]};
   }
 };
-
+}
 #endif

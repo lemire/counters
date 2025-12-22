@@ -20,7 +20,7 @@ second form that accepts a `bench_parameter` struct to tune behaviour.
 #include "counters/bench.h"
 
 // simple usage: forwards the callable
-auto agg = bench([] {
+auto agg = counters::bench([] {
   // code to benchmark
 });
 
@@ -29,7 +29,7 @@ bench_parameter params;
 params.min_repeat = 20;
 params.min_time_ns = 200'000'000; // 0.2 s
 params.inner_max_repeat = 10000;  // allow larger inner loop for tiny functions
-auto agg2 = bench([] {
+auto agg2 = counters::bench([] {
   // code to benchmark
 }, params);
 ```
@@ -45,14 +45,8 @@ You can tune the measurement behaviour via the `bench_parameter` struct.
   `max_repeat`. Increase for longer stabilization on complex workloads.
 - `max_repeat`: safety cap on the outer loop. Raised if you expect long runs
   or want more samples; keep reasonable to avoid runaway loops.
-- `inner_max_repeat`: maximum repetition factor `M` for very short functions.
-  When a single call is too fast to measure, `bench` repeats the callable up
-  to `M` times per outer iteration and then divides counters by `M` to yield
-  per-call metrics. Increase this for tiny functions (e.g., micro/nanosecond
-  workloads).
-- `min_time_per_inner_ns`: target minimum time for the inner repeated block.
-  `bench` increases `M` until the inner block takes at least this long (or
-  until `inner_max_repeat`). Raise to get a longer inner block for stability.
+
+Very short functions (requiring fewer than 1 mus) are still benchmarked, but they are repeatedly called (up to 10000 times). Timings are then divided by the number of repetitions.
 
 Examples:
 
@@ -93,6 +87,7 @@ The `event_aggregate` struct provides aggregate statistics over multiple `event_
 - `double fastest_elapsed_ns() const`: best (minimum) elapsed time in nanoseconds
 - `double fastest_cycles() const`: best (minimum) cycles
 - `double fastest_instructions() const`: best (minimum) instructions
+- `int iteration_count() const`: the number of iterations
 
 You can use these methods to analyze the performance of your function, for example:
 

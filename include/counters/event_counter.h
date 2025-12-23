@@ -74,11 +74,11 @@ struct event_count {
 struct event_aggregate {
   bool has_events = false;
   int iterations = 0;
+  int inner_count = 1; // Number of inner iterations
   event_count total{};
   event_count best{};
   event_count worst{};
-  template <typename T>
-  event_aggregate& operator/=(T divisor) {
+  template <typename T> event_aggregate &operator/=(T divisor) {
     total.elapsed /= double(divisor);
     for (size_t i = 0; i < total.event_counts.size(); i++) {
       total.event_counts[i] /= double(divisor);
@@ -164,5 +164,10 @@ struct event_collector {
     return count;
   }
 };
+
+inline bool has_performance_counters() {
+  return counters::event_collector().has_events();
 }
+
+} // namespace counters
 #endif

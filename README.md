@@ -46,7 +46,7 @@ You can tune the measurement behaviour via the `bench_parameter` struct.
 - `max_repeat`: safety cap on the outer loop. Raised if you expect long runs
   or want more samples; keep reasonable to avoid runaway loops.
 
-Very short functions (requiring fewer than 1 mus) are still benchmarked, but they are repeatedly called (up to 10000 times). Timings are then divided by the number of repetitions.
+Very short functions (requiring less than 10 mu) are still benchmarked, but they are repeatedly called (up to 10000 times). Timings are then divided by the number of repetitions.
 
 Examples:
 
@@ -98,7 +98,7 @@ printf("Fastest time (ns): %f\n", agg.fastest_elapsed_ns());
 printf("Iterations: %d\n", agg.iterations);
 ```
 
-The performance counters are only available when `collector.has_events()` returns true.
+The performance counters are only available when `counters::has_performance_counters()` returns true.
 You may need to run your software with privileged access (sudo) to get the performance
 counters.
 

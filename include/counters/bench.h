@@ -1,8 +1,8 @@
 #ifndef COUNTERS_BENCH_H_
 #define COUNTERS_BENCH_H_
 #include "counters/event_counter.h"
-#include <utility>
 #include <stdexcept>
+#include <utility>
 namespace counters {
 
 /// Parameters to control benchmarking behavior.
@@ -40,13 +40,50 @@ struct bench_parameter {
 
 template <std::size_t... Is, typename Func>
 void call_ntimes_impl(Func &&func, std::index_sequence<Is...>) {
-  // Expand the call N times using an initializer list to force evaluation order.
+  // Expand the call N times using an initializer list to force evaluation
+  // order.
   (void)std::initializer_list<int>{((void)Is, (func(), 0))...};
 }
 
-template <std::size_t N, typename Func>
-void call_ntimes(Func &&func) {
-  call_ntimes_impl(std::forward<Func>(func), std::make_index_sequence<N>{});
+template <std::size_t M, typename Func> void call_ntimes(Func &&func) {
+  if constexpr (M == 1) {
+    func();
+    return;
+  }
+  if constexpr (M == 10) {
+    func();
+    func();
+    func();
+    func();
+    func();
+    func();
+    func();
+    func();
+    func();
+    func();
+    return;
+  }
+  if constexpr (M == 100) {
+    for (size_t i = 0; i < 10; ++i)
+      call_ntimes<10>(func);
+    return;
+  }
+  if constexpr (M == 1000) {
+    for (size_t i = 0; i < 10; ++i)
+      call_ntimes<100>(func);
+    return;
+  }
+  if constexpr (M == 1000) {
+    for (size_t i = 0; i < 10; ++i)
+      call_ntimes<100>(func);
+    return;
+  }
+  if constexpr (M == 10000) {
+    for (size_t i = 0; i < 10; ++i)
+      call_ntimes<1000>(func);
+    return;
+  }
+  throw std::runtime_error("Unsupported M in call_ntimes");
 }
 
 // Runtime dispatcher that maps some common repetition counts to
@@ -67,9 +104,12 @@ inline void call_ntimes_runtime(Func &&func, size_t M) {
   case 1000:
     call_ntimes<1000>(std::forward<Func>(func));
     break;
+  case 10000:
+    call_ntimes<1000>(std::forward<Func>(func));
+    break;
   default:
-    for (size_t _i = 0; _i < M; ++_i)
-      std::forward<Func>(func)();
+    throw std::runtime_error("Unsupported M in call_ntimes_runtime");
+    break;
   }
 }
 
@@ -80,7 +120,8 @@ event_aggregate bench_impl(Function &&function, size_t min_repeat,
   static thread_local event_collector collector;
   auto fn = std::forward<Function>(function);
   size_t N = min_repeat;
-  if (N == 0) N = 1;
+  if (N == 0)
+    N = 1;
 
   // Warm-up
   event_aggregate warm_aggregate{};
@@ -94,7 +135,6 @@ event_aggregate bench_impl(Function &&function, size_t min_repeat,
       N *= 10;
     }
   }
-
   // Measurement
   event_aggregate aggregate{};
   for (size_t i = 0; i < N; i++) {
@@ -105,20 +145,22 @@ event_aggregate bench_impl(Function &&function, size_t min_repeat,
   }
 
   aggregate /= M;
+  aggregate.inner_count = M;
   return aggregate;
 }
 
 template <class Function>
 event_aggregate bench(Function &&function, size_t min_repeat = 10,
                       size_t min_time_ns = 400'000'000,
-                      size_t max_repeat = 1000000,
-                      size_t min_time_per_inner_ns = 1000) {
+                      size_t max_repeat = 1000000) {
   static thread_local event_collector collector;
   auto fn = std::forward<Function>(function);
   size_t N = min_repeat;
+  constexpr size_t min_time_per_inner_ns = 2000;
+  constexpr size_t max_inner_M = 10000;
   // if function() is too fast, repeat it M times to get a measurable time.
   size_t M = 1;
-  while (M < 1000) {
+  while (M < max_inner_M) {
     collector.start();
     call_ntimes_runtime(fn, M);
     event_count allocate_count = collector.end();
@@ -126,8 +168,8 @@ event_aggregate bench(Function &&function, size_t min_repeat = 10,
       break;
     }
     M *= 10;
-    if (M >= 1000) {
-      M = 1000;
+    if (M >= max_inner_M) {
+      M = max_inner_M;
       break;
     }
   }
@@ -146,15 +188,15 @@ event_aggregate bench(Function &&function, size_t min_repeat = 10,
   case 1000:
     return bench_impl<1000>(std::forward<Function>(function), min_repeat,
                             min_time_ns, max_repeat);
+  case 10000:
+    return bench_impl<10000>(std::forward<Function>(function), min_repeat,
+                             min_time_ns, max_repeat);
   default:
     // Fallback to generic runtime implementation
     throw std::runtime_error("unreachable");
     break;
   }
-
 }
-
-
 
 template <class Function>
 event_aggregate bench(Function &&function, const bench_parameter &params) {

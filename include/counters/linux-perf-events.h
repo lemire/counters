@@ -101,6 +101,6 @@ public:
 private:
   void report_error(const std::string &) { working = false; }
 };
-}
+} // namespace counters
 #endif // __linux__
 #endif // COUNTERS_LINUX_PERF_EVENTS_H_

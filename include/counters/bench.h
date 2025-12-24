@@ -6,8 +6,10 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #define COUNTERS_FLATTEN __attribute__((flatten, always_inline)) inline
-#else
+#elif defined(_MSC_VER)
 #define COUNTERS_FLATTEN __forceinline
+#else
+#define COUNTERS_FLATTEN 
 #endif
 
 namespace counters {
@@ -121,23 +123,22 @@ inline void call_ntimes_runtime(Func &&func, size_t M) {
   }
 }
 
-// Compile-time specialized bench implementation for a fixed inner repeat M.
 template <size_t M, class Function>
-COUNTERS_FLATTEN event_aggregate bench_impl(Function &&function,
+event_aggregate bench_impl(Function &&function,
                                             size_t min_repeat,
                                             size_t min_time_ns,
                                             size_t max_repeat) {
   static thread_local event_collector collector;
   auto fn = std::forward<Function>(function);
   size_t N = min_repeat;
-  if (N == 0)
+  if (N == 0) {
     N = 1;
-
+  }
   // Warm-up
   event_aggregate warm_aggregate{};
   for (size_t i = 0; i < N; i++) {
     collector.start();
-    call_ntimes<M>(fn);
+    call_ntimes<M>(std::forward<Function>(function));
     event_count allocate_count = collector.end();
     warm_aggregate << allocate_count;
     if ((i + 1 == N) && (warm_aggregate.total_elapsed_ns() < min_time_ns) &&
@@ -145,15 +146,26 @@ COUNTERS_FLATTEN event_aggregate bench_impl(Function &&function,
       N *= 10;
     }
   }
+  return N;
+}
+
+// Compile-time specialized bench implementation for a fixed inner repeat M.
+template <size_t M, class Function>
+event_aggregate bench_impl(Function &&function, size_t min_repeat,
+                           size_t min_time_ns, size_t max_repeat) {
+  static thread_local event_collector collector;
+  // Let us determine the outer repeat count N first.
+  size_t N =
+      bench_compute_repeat_impl<M>(std::forward<Function>(function), collector,
+                                   min_repeat, min_time_ns, max_repeat);
   // Measurement
   event_aggregate aggregate{};
   for (size_t i = 0; i < N; i++) {
     collector.start();
-    call_ntimes<M>(fn);
+    call_ntimes<M>(std::forward<Function>(function));
     event_count allocate_count = collector.end();
     aggregate << allocate_count;
   }
-
   aggregate /= M;
   aggregate.inner_count = M;
   return aggregate;

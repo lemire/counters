@@ -3,6 +3,15 @@
 #include "counters/event_counter.h"
 #include <stdexcept>
 #include <utility>
+
+#if defined(__GNUC__) || defined(__clang__)
+#define COUNTERS_FLATTEN __attribute__((flatten, always_inline)) inline
+#elif defined(_MSC_VER)
+#define COUNTERS_FLATTEN __forceinline
+#else
+#define COUNTERS_FLATTEN 
+#endif
+
 namespace counters {
 
 /// Parameters to control benchmarking behavior.
@@ -45,7 +54,8 @@ void call_ntimes_impl(Func &&func, std::index_sequence<Is...>) {
   (void)std::initializer_list<int>{((void)Is, (func(), 0))...};
 }
 
-template <std::size_t M, typename Func> void call_ntimes(Func &&func) {
+template <std::size_t M, typename Func>
+COUNTERS_FLATTEN void call_ntimes(Func &&func) {
   if constexpr (M == 1) {
     func();
     return;
@@ -114,9 +124,12 @@ inline void call_ntimes_runtime(Func &&func, size_t M) {
 }
 
 template <size_t M, class Function>
-size_t bench_compute_repeat_impl(Function &&function,
-                                 event_collector &collector, size_t min_repeat,
-                                 size_t min_time_ns, size_t max_repeat) {
+event_aggregate bench_impl(Function &&function,
+                                            size_t min_repeat,
+                                            size_t min_time_ns,
+                                            size_t max_repeat) {
+  static thread_local event_collector collector;
+  auto fn = std::forward<Function>(function);
   size_t N = min_repeat;
   if (N == 0) {
     N = 1;

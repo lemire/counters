@@ -248,7 +248,7 @@ static u32 (*kpc_get_counter_count)(u32 classes);
 
 /// Get counter accumulations.
 /// If `all_cpus` is true, the buffer count should not smaller than
-/// (cpu_count * counter_count). Otherwize, the buffer count should not smaller
+/// (cpu_count * counter_count). Otherwise, the buffer count should not smaller
 /// than (counter_count).
 /// @see kpc_get_counter_count(), kpc_cpu_count().
 /// @param all_cpus true for all CPUs, false for current cpu.
@@ -364,7 +364,7 @@ static u64 (*kperf_tick_frequency)(void);
 // These functions do not require root privileges.
 // -----------------------------------------------------------------------------
 
-// KPEP CPU archtecture constants.
+// KPEP CPU architecture constants.
 #define KPEP_ARCH_I386 0
 #define KPEP_ARCH_X86_64 1
 #define KPEP_ARCH_ARM 2
@@ -404,7 +404,7 @@ typedef struct kpep_db {
   usize fixed_counter_count;
   usize config_counter_count;
   usize power_counter_count;
-  u32 archtecture;  ///< see `KPEP CPU archtecture constants` above.
+  u32 architecture;  ///< see `KPEP CPU architecture constants` above.
   u32 fixed_counter_bits;
   u32 config_counter_bits;
   u32 power_counter_bits;

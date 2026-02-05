@@ -45,6 +45,12 @@ struct bench_parameter {
   /// Maximum number of outer iterations.
   /// Guards against runaway increases when trying to reach `min_time_ns`.
   size_t max_repeat = 1000000;
+  /// Minimum time per inner iteration in nanoseconds.
+  /// When a single call is too fast to measure reliably, the implementation
+  /// runs the callable multiple times in a tight inner loop. This ensures
+  /// stable timing for very short functions. If you set this value too low,
+  /// the timings might be unstable or wrong.
+  size_t min_time_per_inner_ns = 30000;
 };
 
 template <std::size_t M, typename Func>
@@ -166,11 +172,11 @@ event_aggregate bench_impl(Function &&function, size_t min_repeat,
 template <class Function>
 event_aggregate bench(Function &&function, size_t min_repeat = 10,
                       size_t min_time_ns = 400'000'000,
-                      size_t max_repeat = 1000000) {
+                      size_t max_repeat = 1000000,
+                      size_t min_time_per_inner_ns = 30000) {
   static thread_local event_collector collector;
   auto fn = std::forward<Function>(function);
   size_t N = min_repeat;
-  constexpr size_t min_time_per_inner_ns = 2000;
   constexpr size_t max_inner_M = 10000;
   // if function() is too fast, repeat it M times to get a measurable time.
   size_t M = 1;
@@ -215,7 +221,7 @@ event_aggregate bench(Function &&function, size_t min_repeat = 10,
 template <class Function>
 event_aggregate bench(Function &&function, const bench_parameter &params) {
   return bench(std::forward<Function>(function), params.min_repeat,
-               params.min_time_ns, params.max_repeat);
+               params.min_time_ns, params.max_repeat, params.min_time_per_inner_ns);
 }
 
 } // namespace counters

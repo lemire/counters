@@ -56,7 +56,7 @@ Notes:
 
 *WARNINGS*:
 - It might matter a great deal whether function is inlineable. Inlining can drastically change the working being benchmarked. 
-- Care should be taken that the call to `function()` is not optimized away. You can avoid such problems by saving results to a volatile variable. You may also want to add synchronization and other features.
+- Care should be taken that the call to `function()` is not optimized away. You can avoid such problems by saving results to a volatile variable (although not too often in a tight loop). You may also want to add synchronization and other features.
 
 The `event_aggregate` struct provides aggregate statistics over multiple `event_count` measurements. Its main methods are
 
@@ -76,10 +76,14 @@ The `event_aggregate` struct provides aggregate statistics over multiple `event_
 You can use these methods to analyze the performance of your function, for example:
 
 ```cpp
-printf("Mean cycles: %f\n", agg.cycles());
-printf("Mean instructions: %f\n", agg.instructions());
 printf("Fastest time (ns): %f\n", agg.fastest_elapsed_ns());
 printf("Iterations: %d\n", agg.iterations);
+if(counters::has_performance_counters()) {
+  printf("Mean cycles: %f\n", agg.cycles());
+  printf("Mean instructions: %f\n", agg.instructions());
+  printf(" %f GHz\n", agg.cycles() /agg.elapsed_ns())
+  printf(" %f instructions/cycle\n", agg.instructions()/agg.cycles())
+}
 ```
 
 The performance counters are only available when `counters::has_performance_counters()` returns true.

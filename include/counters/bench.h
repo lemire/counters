@@ -164,7 +164,6 @@ event_aggregate bench_impl(Function &&function, size_t min_repeat,
     event_count allocate_count = collector.end();
     aggregate << allocate_count;
   }
-  aggregate /= M;
   aggregate.inner_count = M;
   return aggregate;
 }

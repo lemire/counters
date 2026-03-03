@@ -49,8 +49,8 @@ Notes:
 - `bench` accepts the callable as a forwarding reference and uses
   `std::forward` internally.
 - For very short functions `bench` runs an inner loop that repeats the
-  callable `M` times (up to `inner_max_repeat`) so the measured block is
-  stable; all returned counters are divided by `M` to produce per-call
+  callable `inner_iteration_count()` times (up to `inner_max_repeat`) so the measured block is
+  stable; all returned counters are divided by `inner_iteration_count()` to produce per-call
   metrics (the caller observes results "as if" the callable ran once). Timings are then divided by the number of repetitions. This might be problematic in some cases, so use some care in interpreting the results from short functions.
 
 

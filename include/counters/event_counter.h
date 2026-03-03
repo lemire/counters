@@ -99,17 +99,18 @@ struct event_aggregate {
     total += other;
   }
 
-  double elapsed_sec() const { return total.elapsed_sec() / iterations; }
+  double elapsed_sec() const { return total.elapsed_sec() / iterations / inner_count; }
   double total_elapsed_ns() const { return total.elapsed_ns(); }
-  double elapsed_ns() const { return total.elapsed_ns() / iterations; }
-  double cycles() const { return total.cycles() / iterations; }
-  double branch_misses() const { return total.branch_misses() / iterations; }
-  double branches() const { return total.branches() / iterations; }
-  double instructions() const { return total.instructions() / iterations; }
-  double fastest_elapsed_ns() const { return best.elapsed_ns(); }
-  double fastest_cycles() const { return best.cycles(); }
-  double fastest_instructions() const { return best.instructions(); }
+  double elapsed_ns() const { return total.elapsed_ns() / iterations / inner_count; }
+  double cycles() const { return total.cycles() / iterations / inner_count; }
+  double branch_misses() const { return total.branch_misses() / iterations / inner_count; }
+  double branches() const { return total.branches() / iterations / inner_count; }
+  double instructions() const { return total.instructions() / iterations / inner_count; }
+  double fastest_elapsed_ns() const { return best.elapsed_ns() / inner_count; }
+  double fastest_cycles() const { return best.cycles() / inner_count; }
+  double fastest_instructions() const { return best.instructions() / inner_count; }
   int iteration_count() const { return iterations; }
+  int inner_iteration_count() const { return inner_count; }
 };
 
 struct event_collector {

@@ -179,6 +179,7 @@ event_aggregate bench(Function &&function, size_t min_repeat = 10,
   constexpr size_t max_inner_M = 10000;
   // if function() is too fast, repeat it M times to get a measurable time.
   size_t M = 1;
+  call_ntimes_runtime(fn, M); // call it once to warm up any caches, etc.
   while (M < max_inner_M) {
     collector.start();
     call_ntimes_runtime(fn, M);

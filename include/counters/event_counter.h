@@ -109,6 +109,8 @@ struct event_aggregate {
   double fastest_elapsed_ns() const { return best.elapsed_ns() / inner_count; }
   double fastest_cycles() const { return best.cycles() / inner_count; }
   double fastest_instructions() const { return best.instructions() / inner_count; }
+  double fastest_branch_misses() const { return best.branch_misses() / inner_count; }
+  double fastest_branches() const { return best.branches() / inner_count; }
   int iteration_count() const { return iterations; }
   int inner_iteration_count() const { return inner_count; }
 };

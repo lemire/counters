@@ -22,39 +22,54 @@ template <int TYPE = PERF_TYPE_HARDWARE> class LinuxEvents {
   std::vector<uint64_t> ids{};
 
 public:
-  explicit LinuxEvents(std::vector<int> config_vec) : fd(0), working(true) {
-    memset(&attribs, 0, sizeof(attribs));
-    attribs.type = TYPE;
-    attribs.size = sizeof(attribs);
-    attribs.disabled = 1;
-    attribs.exclude_kernel = 1;
-    attribs.exclude_hv = 1;
+  explicit LinuxEvents(std::vector<int> config_vec) : fd(-1), working(true) {
+    std::vector<int> current_configs = config_vec;
+    bool success = false;
+    while (!success && !current_configs.empty()) {
+      working = true;
+      memset(&attribs, 0, sizeof(attribs));
+      attribs.type = TYPE;
+      attribs.size = sizeof(attribs);
+      attribs.disabled = 1;
+      attribs.exclude_kernel = 1;
+      attribs.exclude_hv = 1;
 
-    attribs.sample_period = 0;
-    attribs.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
-    const int pid = 0;  // the current process
-    const int cpu = -1; // all CPUs
-    const unsigned long flags = 0;
+      attribs.sample_period = 0;
+      attribs.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+      const int pid = 0;  // the current process
+      const int cpu = -1; // all CPUs
+      const unsigned long flags = 0;
 
-    int group = -1; // no group
-    num_events = config_vec.size();
-    ids.resize(config_vec.size());
-    uint32_t i = 0;
-    for (auto config : config_vec) {
-      attribs.config = config;
-      int _fd = static_cast<int>(
-          syscall(__NR_perf_event_open, &attribs, pid, cpu, group, flags));
-      if (_fd == -1) {
-        report_error("perf_event_open");
+      int group = -1; // no group
+      num_events = current_configs.size();
+      ids.resize(current_configs.size());
+      uint32_t i = 0;
+      for (auto config : current_configs) {
+        attribs.config = config;
+        int _fd = static_cast<int>(
+            syscall(__NR_perf_event_open, &attribs, pid, cpu, group, flags));
+        if (_fd == -1) {
+          report_error("perf_event_open");
+          break;
+        }
+        ioctl(_fd, PERF_EVENT_IOC_ID, &ids[i++]);
+        if (group == -1) {
+          group = _fd;
+          fd = _fd;
+        }
       }
-      ioctl(_fd, PERF_EVENT_IOC_ID, &ids[i++]);
-      if (group == -1) {
-        group = _fd;
-        fd = _fd;
+
+      if (working) {
+        success = true;
+        temp_result_vec.resize(num_events * 2 + 1);
+      } else {
+        if (fd != -1) {
+          close(fd);
+          fd = -1;
+        }
+        current_configs.pop_back();
       }
     }
-
-    temp_result_vec.resize(num_events * 2 + 1);
   }
 
   ~LinuxEvents() {

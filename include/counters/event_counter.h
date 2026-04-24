@@ -33,7 +33,13 @@ struct event_count {
       : elapsed(other.elapsed), event_counts(other.event_counts) {}
 
   // The types of counters (so we can read the getter more easily)
-  enum event_counter_types { CPU_CYCLES, INSTRUCTIONS, BRANCH, BRANCH_MISSES };
+  enum event_counter_types {
+    CPU_CYCLES,
+    INSTRUCTIONS,
+    BRANCH,
+    BRANCH_MISSES,
+    CACHE_MISSES
+  };
 
   double elapsed_sec() const {
     return std::chrono::duration<double>(elapsed).count();
@@ -51,6 +57,9 @@ struct event_count {
     return static_cast<double>(event_counts[BRANCH_MISSES]);
   }
   double branches() const { return static_cast<double>(event_counts[BRANCH]); }
+  double cache_misses() const {
+    return static_cast<double>(event_counts[CACHE_MISSES]);
+  }
 
   event_count &operator=(const event_count &other) {
     this->elapsed = other.elapsed;
@@ -106,11 +115,13 @@ struct event_aggregate {
   double branch_misses() const { return total.branch_misses() / iterations / inner_count; }
   double branches() const { return total.branches() / iterations / inner_count; }
   double instructions() const { return total.instructions() / iterations / inner_count; }
+  double cache_misses() const { return total.cache_misses() / iterations / inner_count; }
   double fastest_elapsed_ns() const { return best.elapsed_ns() / inner_count; }
   double fastest_cycles() const { return best.cycles() / inner_count; }
   double fastest_instructions() const { return best.instructions() / inner_count; }
   double fastest_branch_misses() const { return best.branch_misses() / inner_count; }
   double fastest_branches() const { return best.branches() / inner_count; }
+  double fastest_cache_misses() const { return best.cache_misses() / inner_count; }
   int iteration_count() const { return iterations; }
   int inner_iteration_count() const { return inner_count; }
 };
@@ -127,6 +138,7 @@ struct event_collector {
             PERF_COUNT_HW_INSTRUCTIONS,
             PERF_COUNT_HW_BRANCH_INSTRUCTIONS, // Retired branch instructions
             PERF_COUNT_HW_BRANCH_MISSES,
+            PERF_COUNT_HW_CACHE_MISSES,
         }) {}
   bool has_events() { return linux_events.is_working(); }
 #elif defined(__APPLE__) && defined(__aarch64__)
@@ -162,6 +174,7 @@ struct event_collector {
     count.event_counts[1] = diff.instructions;
     count.event_counts[2] = diff.branches;
     count.event_counts[3] = diff.missed_branches;
+    count.event_counts[4] = diff.cache_misses;
 #endif
     count.elapsed = end_clock - start_clock;
     return count;

@@ -54,21 +54,27 @@ struct performance_counters {
   double branches;
   double missed_branches;
   double instructions;
-  performance_counters(uint64_t c, uint64_t b, uint64_t m, uint64_t i)
-      : cycles(c), branches(b), missed_branches(m), instructions(i) {}
-  performance_counters(double c, double b, double m, double i)
-      : cycles(c), branches(b), missed_branches(m), instructions(i) {}
+  double cache_misses;
+  performance_counters(uint64_t c, uint64_t b, uint64_t m, uint64_t i,
+                       uint64_t cm)
+      : cycles(c), branches(b), missed_branches(m), instructions(i),
+        cache_misses(cm) {}
+  performance_counters(double c, double b, double m, double i, double cm)
+      : cycles(c), branches(b), missed_branches(m), instructions(i),
+        cache_misses(cm) {}
   performance_counters(double init)
       : cycles(init),
         branches(init),
         missed_branches(init),
-        instructions(init) {}
+        instructions(init),
+        cache_misses(init) {}
 
   inline performance_counters &operator-=(const performance_counters &other) {
     cycles -= other.cycles;
     branches -= other.branches;
     missed_branches -= other.missed_branches;
     instructions -= other.instructions;
+    cache_misses -= other.cache_misses;
     return *this;
   }
   inline performance_counters &min(const performance_counters &other) {
@@ -79,6 +85,8 @@ struct performance_counters {
                           : missed_branches;
     instructions =
         other.instructions < instructions ? other.instructions : instructions;
+    cache_misses =
+        other.cache_misses < cache_misses ? other.cache_misses : cache_misses;
     return *this;
   }
   inline performance_counters &operator+=(const performance_counters &other) {
@@ -86,6 +94,7 @@ struct performance_counters {
     branches += other.branches;
     missed_branches += other.missed_branches;
     instructions += other.instructions;
+    cache_misses += other.cache_misses;
     return *this;
   }
 
@@ -94,6 +103,7 @@ struct performance_counters {
     branches /= numerator;
     missed_branches /= numerator;
     instructions /= numerator;
+    cache_misses /= numerator;
     return *this;
   }
 };
@@ -102,7 +112,8 @@ inline performance_counters operator-(const performance_counters &a,
                                       const performance_counters &b) {
   return performance_counters(a.cycles - b.cycles, a.branches - b.branches,
                               a.missed_branches - b.missed_branches,
-                              a.instructions - b.instructions);
+                              a.instructions - b.instructions,
+                              a.cache_misses - b.cache_misses);
 }
 
 typedef float f32;
@@ -851,6 +862,17 @@ static const event_alias profile_events[] = {
          "BR_MISP_RETIRED.ALL_BRANCHES",  // Intel Core 2th-10th
          "BR_INST_RETIRED.MISPRED",       // Intel Yonah, Merom
      }},
+    // Apple Silicon has no off-cluster LLC exposed to kperf: the per-cluster L2
+    // is the last cache level visible here, so we treat L2 data misses as the
+    // LLC-miss signal.
+    {"cache-misses",
+     {
+         "L2_CACHE_MISS_DATA",
+         "L2_CACHE_MISS",
+         "LLC_MISSES",
+         "LONGEST_LAT_CACHE.MISS",
+         "MEM_LOAD_RETIRED.L3_MISS",
+     }},
 };
 
 static kpep_event *get_event(kpep_db *db, const event_alias *alias) {
@@ -999,7 +1021,8 @@ struct AppleEvents {
     }
     return performance_counters{
         counters_0[counter_map[0]], counters_0[counter_map[2]],
-        counters_0[counter_map[3]], counters_0[counter_map[1]]};
+        counters_0[counter_map[3]], counters_0[counter_map[1]],
+        counters_0[counter_map[4]]};
   }
 };
 }

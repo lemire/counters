@@ -68,11 +68,13 @@ The `event_aggregate` struct provides aggregate statistics over multiple `event_
 - `double instructions() const`: mean instructions
 - `double branch_misses() const`: mean branch misses
 - `double branches() const`: mean branches
+- `double cache_misses() const`: mean cache misses (last-level cache on Linux; L2 data misses on Apple Silicon, which has no off-cluster LLC visible to kperf)
 - `double fastest_elapsed_ns() const`: best (minimum) elapsed time in nanoseconds
 - `double fastest_cycles() const`: best (minimum) cycles
 - `double fastest_instructions() const`: best (minimum) instructions
 - `double fastest_branch_misses() const`: best (minimum) branch misses
 - `double fastest_branches() const`: best (minimum) branches
+- `double fastest_cache_misses() const`: best (minimum) cache misses
 - `int iteration_count() const`: the number of iterations
 
 You can use these methods to analyze the performance of your function, for example:
@@ -84,6 +86,7 @@ if(counters::has_performance_counters()) {
   printf("Mean cycles: %f\n", agg.cycles());
   printf("Mean instructions: %f\n", agg.instructions());
   printf("Fastest branch misses: %f\n", agg.fastest_branch_misses());
+  printf("Mean cache misses: %f\n", agg.cache_misses());
   printf(" %f GHz\n", agg.cycles() /agg.elapsed_ns())
   printf(" %f instructions/cycle\n", agg.instructions()/agg.cycles())
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(counters VERSION 4.0.0 LANGUAGES CXX)
+project(counters VERSION 4.1.0 LANGUAGES CXX)
 
 option(COUNTERS_INSTALL "Enable install" ON)
 

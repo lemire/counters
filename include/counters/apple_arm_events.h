@@ -862,11 +862,16 @@ static const event_alias profile_events[] = {
          "BR_MISP_RETIRED.ALL_BRANCHES",  // Intel Core 2th-10th
          "BR_INST_RETIRED.MISPRED",       // Intel Yonah, Merom
      }},
-    // Apple Silicon has no off-cluster LLC exposed to kperf: the per-cluster L2
-    // is the last cache level visible here, so we treat L2 data misses as the
-    // LLC-miss signal.
+    // Apple Silicon has no off-cluster LLC exposed to kperf. M4 dropped the
+    // L2_CACHE_MISS_DATA event from the kpep database, so we report L1 data
+    // cache load misses instead — a coarser proxy for memory-subsystem
+    // pressure, but the best signal the hardware exposes across current
+    // chips. Older Apple chips (M1/M2/M3) and x86_64 Intel CPUs fall through
+    // to their respective LLC-miss events.
     {"cache-misses",
      {
+         "L1D_CACHE_MISS_LD",
+         "L1D_CACHE_MISS_LD_NONSPEC",
          "L2_CACHE_MISS_DATA",
          "L2_CACHE_MISS",
          "LLC_MISSES",
